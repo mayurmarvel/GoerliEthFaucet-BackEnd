@@ -91,9 +91,20 @@ const sendTransaction = async ( receiverAddress, res) =>{
 
 // Checks if the Required timespan has passed or not
 const timeEligibilityCheck = (receiverAddress) =>{
+    let lastUpdatedTime ;
 
-    let lastUpdatedTime = Math.floor(faucetClaimers.get(receiverAddress)/1000.0)
+    console.log(faucetClaimers.get(receiverAddress));
+    if(faucetClaimers.get(receiverAddress) == 0 ||faucetClaimers.get(receiverAddress) == undefined ){
+        return true;
+
+    } else {
+        lastUpdatedTime = Math.floor(faucetClaimers.get(receiverAddress)/1000.0)
+    }
+
+    
     let CurrentTime = Math.floor(new Date().getTime()/1000.0)
+
+    // console.log((CurrentTime - lastUpdatedTime) > claimIntervalInSeconds);
 
     return (CurrentTime - lastUpdatedTime) > claimIntervalInSeconds
 
@@ -167,7 +178,7 @@ const saveBackup = () => {
         // Catch this!
         if (err) throw err;
     
-        console.log('Users saved!');
+        // console.log('Users saved!');
     });
 
 }
