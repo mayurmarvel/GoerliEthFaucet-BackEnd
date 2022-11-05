@@ -1,7 +1,9 @@
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 require('dotenv').config();
 const fs = require('fs');
 
-const { Network, Alchemy, Wallet, Utils  } = require("alchemy-sdk");
+const { Network, Alchemy, Wallet, Utils , ethers  } = require("alchemy-sdk");
 
 
 const userBackup = require('./backups/users.json')
@@ -24,6 +26,8 @@ app.use(express.json()); //accepting only json data
 
 
 //  Make Sure to Update the .env filr with your credentials
+
+const url = `https://eth-goerli.g.alchemy.com/v2/${process.env.API_KEY}`;
 const PRIVATE_KEY = process.env.PRIVATE_KEY
 
 const settings = {
@@ -53,16 +57,34 @@ app.get('/', (req,res)=>{
 }) 
 
 
-
 // The Function for sending Transaction
 const sendTransaction = async ( receiverAddress, res) =>{
+
+    let maxPriorityFeePerGas;
+
+    const options = {
+        method: 'POST',
+        headers: { accept: 'application/json', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'eth_maxPriorityFeePerGas',
+        }),
+      };
+
+    maxPriorityFeePerGas = await fetch(url, options)
+    .then((res) => res.json())
+    .then((json) => json.result)
+    .catch((err) => console.error('error:' + err));
+
+    console.log(maxPriorityFeePerGas);
 
 
     const transaction = {
         to: receiverAddress,
         value: Utils.parseEther("0.001"),
-        gasLimit: "21000",
-        maxPriorityFeePerGas: Utils.parseUnits("14", "gwei"),
+        gasLimit: "3000000",
+        maxPriorityFeePerGas: await maxPriorityFeePerGas,
         maxFeePerGas: await alchemy.core.getGasPrice(),
         nonce: await alchemy.core.getTransactionCount(wallet.getAddress()),
         type: 2,
@@ -91,9 +113,12 @@ const sendTransaction = async ( receiverAddress, res) =>{
 
 // Checks if the Required timespan has passed or not
 const timeEligibilityCheck = (receiverAddress) =>{
+    // console.log('receiverAddress: ', receiverAddress);
     let lastUpdatedTime ;
 
-    console.log(faucetClaimers.get(receiverAddress));
+
+    // console.log(faucetClaimers.get(receiverAddress));
+    // console.log(faucetClaimers);
     if(faucetClaimers.get(receiverAddress) == 0 ||faucetClaimers.get(receiverAddress) == undefined ){
         return true;
 
@@ -117,17 +142,18 @@ app.post('/sendEther', (req,res,next)=>{
 
     if(!req.body.receiverAddress) return res.send("INVALID")
 
-    let receiverAddress = req.body.receiverAddress
+    let _receiverAddress = req.body.receiverAddress
+    console.log('req.body.receiverAddress: ', req.body.receiverAddress);
 
-    if(!timeEligibilityCheck(receiverAddress)) return res.send("TIME_LIMIT")
+    if(!timeEligibilityCheck(_receiverAddress)) return res.send("TIME_LIMIT")
 
 
-    console.log('receiver:', receiverAddress);
+    console.log('receiver:', _receiverAddress);
 
 
     try{
 
-        sendTransaction( receiverAddress , res);
+        sendTransaction( _receiverAddress , res);
 
 
     }catch(error){
